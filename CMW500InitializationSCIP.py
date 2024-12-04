@@ -9,7 +9,7 @@ logging.basicConfig(
 )
 
 rm = pyvisa.ResourceManager()
-cmw = rm.open_resource("TCPIP::192.10.11.175::INSTR")
+cmw = rm.open_resource("TCPIP::192.10.11.203::INSTR")
 print(cmw.query("*IDN?"))
 cmw.write("*RST;*OPC;*CLS")
 logging.info("Logging L.15: RST, OPC and CLS fired")
@@ -45,6 +45,21 @@ try:
         logging.info("Logging L.33:Power Level Set to -80 dBm")
         cmw.timeout = 30000  # Increase timeout to 30 seconds
 
+        cmw.timeout = 10000  # Increase timeout to 10 seconds
+        #query Ipv4 and IPV6 address
+        UE_IPV4=cmw.query('SENSe:LTE:SIGN:UESinfo:UEADdress:IPV4?')
+        UE_IPV6=cmw.query('SENSe:LTE:SIGN:UESinfo:UEADdress:IPV6?')
+        print(f'IPV4 address is :{UE_IPV4} & IPV6 address is:{UE_IPV6}')
+        print("IPV4&IPV6 Errors:", cmw.query("SYST:ERR?"))  # Ensure no errors occurred
+        cmw.timeout = 10000  # Increase timeout to 10 seconds
+
+        #query UE IMEI and IMSI Nuymber
+        UE_IMEI=cmw.query('SENSe:LTE:SIGN1:UESinfo:IMEI?')
+        UE_IMSI=cmw.query('SENSe:LTE:SIGN1:UESinfo:IMSI?')
+        print("IMEI&IMSI Errors:", cmw.query("SYST:ERR?"))  # Ensure no errors occurred
+        print(f"NIC of IMEI : {UE_IMEI} & SIM of IMSI : {UE_IMSI}")
+        cmw.timeout=10000     # 10 second timeout
+
         # Query total DL power
         full_cell_power = cmw.query("SENSe:LTE:SIGN:DL:PCC:FCPower?")
         logging.info(f"Raw Full Cell DL Power: {full_cell_power}")
@@ -63,8 +78,8 @@ try:
         #Query total downlink throughput
         full_DL_throughput= cmw.query("SENSe:LTE:SIGN1:CONNection:ETHRoughput:DL:ALL?")
         print(f"DL throughput is: { full_DL_throughput}")
-
         cmw.timeout = 10000  # Increase timeout to 30 seconds
+
         #Query total uplink ethernet throughput
         full_ULethernet_throughput = cmw.query("SENSe:LTE:SIGN1:CONNection:ETHRoughput:UL:ALL?")
         print(f"UL throughput is: {full_ULethernet_throughput}")
@@ -82,10 +97,53 @@ try:
             print("Error converting DL and UL throughput:", e)
             logging.error(f" L47. Error formatting DL & UL throughput: {e}")
 
+        print("Errors:", cmw.query("SYST:ERR?"))  # Ensure no errors occurred
+        cmw.timeout = 10000  # Increase timeout to 10 seconds
+
+        #querying the UE Information
+        UE_uses=cmw.query('SENSe:LTE:SIGN:UESinfo:UEUSage?')
+        UE_VDDref=cmw.query('SENSe:LTE:SIGN:UESinfo:VDPReference?')
+        UE_Bearer=cmw.query('SENSe:LTE:SIGN:UESinfo:UEADdress:DEDBearer:SEParate?')
+        print(f'UE_uses: {UE_uses}, UE_vddref: {UE_VDDref}, UE_Bearer: {UE_Bearer}')
+        cmw.timeout=1000
+
+        #UE Report enable settings 1.Reporting Interval
+        cmw.write("CONFigure:LTE:SIGN:UEReport:RINTerval I640")  # Example: 640 ms
+        print("RINTerval Errors:", cmw.query("SYST:ERR?"))  # Ensure no errors occurred
+        cmw.timeout = 10000  # Increase timeout to 10 seconds
+
+        #Measurement Gap Enable (Optional)
+        cmw.write("CONFigure:LTE:SIGN:UEReport:MGENable ON")
+        print("MGENable Errors:", cmw.query("SYST:ERR?"))  # Ensure no errors occurred
+        cmw.timeout = 10000  # Increase timeout to 10 seconds
+
+        #Measurement Gap Period (Optional)
+        cmw.write("CONFigure:LTE:SIGN:UEReport:MGPeriod G040")
+        print("MGPeriod Errors:", cmw.query("SYST:ERR?"))  # Ensure no errors occurred
+        cmw.timeout = 10000  # Increase timeout to 10 seconds
+
+        #Miscalleneous settings
+        cmw.write('CONFigure:LTE:SIGN:UEReport:FCOefficient:RSRP FC4')
+        print("FCOefficient RSRP Errors:", cmw.query("SYST:ERR?"))  # Ensure no errors occurred
+        cmw.write('CONFigure:LTE:SIGN:UEReport:FCOefficient:RSRQ FC4')
+        print("FCOefficient RSRQ Errors:", cmw.query("SYST:ERR?"))  # Ensure no errors occurred
+        cmw.write('CONFigure:LTE:SIGN:UEReport:WMQuantity ECNO')
+        print("WMQuantity Errors:", cmw.query("SYST:ERR?"))  # Ensure no errors occurred
+        cmw.write('CONFigure:LTE:SIGN:UEReport:MCSCell SF640')
+        print("MCSCell Errors:", cmw.query("SYST:ERR?"))  # Ensure no errors occurred
+        cmw.write('CONFigure:LTE:SIGN:UEReport:AINTerrupt OFF')
+        print("AINTerrupt Errors:", cmw.query("SYST:ERR?"))  # Ensure no errors occurred
+        cmw.write('CONFigure:LTE:SIGN:UEReport:ENABle ON')
+        print("UEReport Enable Errors:", cmw.query("SYST:ERR?"))  # Ensure no errors occurred
+        cmw.timeout = 10000  # Increase timeout to 10 seconds
+
         #Query the RSRP and RSRQ for PCC
         RSRP_RCOM1=cmw.query("SENSe:LTE:SIGN1:UEReport[:PCC]:RSRP?")
+        print("RSRPRead Enable Errors:", cmw.query("SYST:ERR?"))  # Ensure no errors occurred
         RSRQ_RCOM1=cmw.query("SENSe:LTE:SIGN1:UEReport[:PCC]:RSRQ?")
+        print("RSRQRead Enable Errors:", cmw.query("SYST:ERR?"))  # Ensure no errors occurred
         print(f"RSRP as: {RSRP_RCOM1}, RSRQ as: {RSRQ_RCOM1}")
+        cmw.timeout = 10000  # Increase timeout to 10 seconds
 
         #Query the Modulation and coding scheme
         Mod_Cod_scheme=cmw.query("SENSe:LTE:SIGN1:CONNection:PCC:FCPRi:DL:MCSTable:DETermined?")
